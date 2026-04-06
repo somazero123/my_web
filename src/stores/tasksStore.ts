@@ -40,11 +40,14 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   hydrate: async () => {
     set({ loading: true, error: undefined });
     try {
-      const res = await supabase
-        .from("tasks")
-        .select("id, title, delta, image_url, sort_order, created_at")
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
+      const fetchTasks = async () =>
+        await supabase
+          .from("tasks")
+          .select("id, title, delta, image_url, sort_order, created_at")
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: true });
+
+      const res = await fetchTasks();
       if (res.error) {
         const msg = res.error.message || "加载失败";
         if (msg.includes("public.tasks") && msg.includes("schema cache")) {
@@ -58,7 +61,12 @@ export const useTasksStore = create<TasksState>((set, get) => ({
         set({ loading: false, error: msg });
         return;
       }
-      const rows = res.data ?? [];
+      let rows = res.data ?? [];
+      if (rows.length === 0) {
+        await supabase.rpc("ensure_user_setup");
+        const res2 = await fetchTasks();
+        if (!res2.error) rows = res2.data ?? [];
+      }
       const tasks: EarnTask[] = rows.map((r) => ({
         id: r.id,
         title: r.title,
