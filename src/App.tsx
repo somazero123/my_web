@@ -12,9 +12,12 @@ import AdminMigrate from "@/pages/AdminMigrate";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 import { useAuth } from "@/providers/authContext";
+import MissingEnv from "@/pages/MissingEnv";
+import { isSupabaseConfigured } from "@/lib/supabaseClient";
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { session, loading } = useAuth();
+  if (!isSupabaseConfigured) return <MissingEnv />;
   if (loading) return null;
   if (!session) return <Login />;
   return children;
