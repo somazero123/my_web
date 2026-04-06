@@ -4,7 +4,7 @@ export const TASK_CARDS: TaskCard[] = [
   {
     key: "math",
     title: "数学题",
-    delta: 3,
+    delta: 1,
     prompt:
       "children's illustration, zootopia inspired anthropomorphic animal city, cute bunny police officer heroine solving math on a chalkboard, numbers and simple equations, bright pastel, clean line art, soft shading",
   },
@@ -44,4 +44,3 @@ export const TASK_CARDS: TaskCard[] = [
       "children's illustration, zootopia inspired, bunny police officer heroine receiving a praise certificate and gold badge, stars and medal, bright celebratory",
   },
 ];
-
