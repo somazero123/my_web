@@ -17,6 +17,15 @@ npm i
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+## 部署到 Vercel
+
+在 Vercel 项目里（Production/Preview 环境都建议配置）添加：
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+注意：Vite 的 `VITE_` 环境变量必须在构建时注入，修改后需要重新部署才能生效。
+
 3. 启动
 
 ```bash
