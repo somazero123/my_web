@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabaseClient";
+import { TASK_CARDS } from "@/config/taskCards";
 
 export type EarnTask = {
   id: string;
@@ -9,6 +10,18 @@ export type EarnTask = {
   sortOrder: number;
   createdAt: string;
 };
+
+function fallbackTasks(): EarnTask[] {
+  const now = new Date().toISOString();
+  return TASK_CARDS.map((t, idx) => ({
+    id: `local:${t.key}`,
+    title: t.title,
+    delta: t.delta,
+    imageUrl: undefined,
+    sortOrder: idx,
+    createdAt: now,
+  }));
+}
 
 type TasksState = {
   tasks: EarnTask[];
@@ -33,7 +46,16 @@ export const useTasksStore = create<TasksState>((set, get) => ({
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       if (res.error) {
-        set({ loading: false, error: res.error.message });
+        const msg = res.error.message || "加载失败";
+        if (msg.includes("public.tasks") && msg.includes("schema cache")) {
+          set({
+            loading: false,
+            tasks: fallbackTasks(),
+            error: "任务表未初始化，当前显示默认任务；执行 Supabase 任务表迁移后即可管理任务。",
+          });
+          return;
+        }
+        set({ loading: false, error: msg });
         return;
       }
       const rows = res.data ?? [];

@@ -19,6 +19,7 @@ export default function AdminTasks() {
   }, [hydrate]);
 
   const ordered = useMemo(() => tasks.slice().sort((a, b) => a.sortOrder - b.sortOrder), [tasks]);
+  const disabled = Boolean(error);
 
   return (
     <PageShell>
@@ -40,7 +41,7 @@ export default function AdminTasks() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <div className="mb-1 text-xs font-medium text-zinc-700">任务名称</div>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：练字" />
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="例如：练字" disabled={disabled} />
               </div>
               <div>
                 <div className="mb-1 text-xs font-medium text-zinc-700">每次加分</div>
@@ -50,12 +51,14 @@ export default function AdminTasks() {
                   step={1}
                   value={delta}
                   onChange={(e) => setDelta(Math.max(1, Number(e.target.value || 1)))}
+                  disabled={disabled}
                 />
               </div>
             </div>
             <div className="mt-4 flex items-center justify-between gap-3">
               <div className="text-xs text-zinc-600">图片可在创建后上传。</div>
               <Button
+                disabled={disabled}
                 onClick={async () => {
                   setMsg(undefined);
                   const r = await createTask({ title, delta });
@@ -114,25 +117,29 @@ export default function AdminTasks() {
                         <label
                           className={cn(
                             "inline-flex items-center gap-2 rounded-2xl border border-dashed border-zinc-300 bg-white/50 px-3 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-white",
+                            disabled ? "pointer-events-none opacity-60" : null,
                           )}
                         >
                           <UploadCloud className="h-4 w-4" />
                           上传图片
-                          <input
-                            className="hidden"
-                            type="file"
-                            accept="image/*"
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const url = await uploadTaskImage({ taskId: t.id, file, filename: file.name });
-                              await updateTask(t.id, { imageUrl: url });
-                              e.target.value = "";
-                            }}
-                          />
+                          {!disabled ? (
+                            <input
+                              className="hidden"
+                              type="file"
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const url = await uploadTaskImage({ taskId: t.id, file, filename: file.name });
+                                await updateTask(t.id, { imageUrl: url });
+                                e.target.value = "";
+                              }}
+                            />
+                          ) : null}
                         </label>
                         <Button
                           variant="secondary"
+                          disabled={disabled}
                           onClick={async () => {
                             const ok = await deleteTask(t.id);
                             if (!ok.ok) setMsg(ok.error || "删除失败");
