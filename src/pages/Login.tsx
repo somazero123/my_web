@@ -62,7 +62,12 @@ export default function Login() {
                     setMsg("注册成功，请登录。");
                     setMode("login");
                   } catch (e) {
-                    setMsg(e instanceof Error ? e.message : "操作失败");
+                    const raw = e instanceof Error ? e.message : "操作失败";
+                    if (raw.toLowerCase().includes("database")) {
+                      setMsg("数据库错误：请稍后重试（或联系管理员检查 Supabase 触发器/函数）。");
+                    } else {
+                      setMsg(raw);
+                    }
                   } finally {
                     setLoading(false);
                   }
@@ -88,4 +93,3 @@ export default function Login() {
     </PageShell>
   );
 }
-
