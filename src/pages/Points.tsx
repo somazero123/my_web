@@ -5,10 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { usePointsStore } from "@/stores/pointsStore";
-import { TASK_CARDS } from "@/config/taskCards";
-import { textToImageUrl } from "@/utils/textToImage";
+import ZootopiaBadge from "@/components/icons/ZootopiaBadge";
 import { cn } from "@/lib/utils";
 import Modal from "@/components/ui/Modal";
+import { useTasksStore } from "@/stores/tasksStore";
 
 function TaskCardItem({
   title,
@@ -18,7 +18,7 @@ function TaskCardItem({
 }: {
   title: string;
   delta: number;
-  img: string;
+  img?: string;
   onPick: () => void;
 }) {
   return (
@@ -29,7 +29,18 @@ function TaskCardItem({
       onClick={onPick}
     >
       <div className="relative aspect-[4/3] bg-zinc-100">
-        <img src={img} alt={title} className="h-full w-full object-cover" />
+        {img ? (
+          <img src={img} alt={title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-blue-100 via-white to-amber-100">
+            <div className="grid place-items-center gap-2 text-center">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-white/80 shadow-sm shadow-blue-200/25">
+                <ZootopiaBadge className="h-7 w-7 text-[color:var(--z-accent)]" />
+              </div>
+              <div className="px-4 text-sm font-semibold text-zinc-900">{title}</div>
+            </div>
+          </div>
+        )}
         <div className="absolute left-3 top-3 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-amber-950">
           +{delta}
         </div>
@@ -46,24 +57,20 @@ function TaskCardItem({
 
 export default function Points() {
   const { hydrate, adjustPointsWithSecret, lastMessage, clearLastMessage } = usePointsStore();
+  const { tasks, hydrate: hydrateTasks, error: tasksError } = useTasksStore();
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
   const [secret, setSecret] = useState("");
   const [secretError, setSecretError] = useState<string | undefined>(undefined);
 
-  const cards = useMemo(() => {
-    return TASK_CARDS.map((c) => ({
-      ...c,
-      img: textToImageUrl(c.prompt, "portrait_4_3"),
-    }));
-  }, []);
+  const cards = useMemo(() => tasks, [tasks]);
 
   const items = useMemo(() => {
     return cards
       .map((c) => ({
         ...c,
-        qty: cart[c.key] || 0,
+        qty: cart[c.id] || 0,
       }))
       .filter((x) => x.qty > 0);
   }, [cards, cart]);
@@ -79,7 +86,8 @@ export default function Points() {
 
   useEffect(() => {
     hydrate();
-  }, [hydrate]);
+    hydrateTasks();
+  }, [hydrate, hydrateTasks]);
 
   return (
     <PageShell>
@@ -120,17 +128,23 @@ export default function Points() {
         <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
           <div>
             <div className="mb-3 text-sm font-semibold text-zinc-900">任务卡片（点击加入购物车）</div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {cards.map((c) => (
-                <TaskCardItem
-                  key={c.key}
-                  title={c.title}
-                  delta={c.delta}
-                  img={c.img}
-                  onPick={() => setCart((s) => ({ ...s, [c.key]: (s[c.key] || 0) + 1 }))}
-                />
-              ))}
-            </div>
+            {cards.length ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {cards.map((c) => (
+                  <TaskCardItem
+                    key={c.id}
+                    title={c.title}
+                    delta={c.delta}
+                    img={c.imageUrl}
+                    onPick={() => setCart((s) => ({ ...s, [c.id]: (s[c.id] || 0) + 1 }))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 px-4 py-6 text-sm text-zinc-600">
+                {tasksError ? `任务加载失败：${tasksError}` : "还没有任务，请到后台的“任务管理”添加任务。"}
+              </div>
+            )}
           </div>
 
           <Card>
@@ -146,7 +160,7 @@ export default function Points() {
                 <div className="grid gap-3">
                   <div className="grid gap-2">
                     {items.map((it) => (
-                      <div key={it.key} className="flex items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/60 px-3 py-2">
+                      <div key={it.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/60 px-3 py-2">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-zinc-900">{it.title}</div>
                           <div className="mt-0.5 text-xs text-zinc-600">每次 +{it.delta}，共 {it.qty * it.delta}</div>
@@ -157,9 +171,9 @@ export default function Points() {
                             onClick={() =>
                               setCart((s) => {
                                 const next = { ...s };
-                                const v = (next[it.key] || 0) - 1;
-                                if (v <= 0) delete next[it.key];
-                                else next[it.key] = v;
+                                const v = (next[it.id] || 0) - 1;
+                                if (v <= 0) delete next[it.id];
+                                else next[it.id] = v;
                                 return next;
                               })
                             }
@@ -169,7 +183,7 @@ export default function Points() {
                           <div className="w-8 text-center text-sm font-semibold text-zinc-900">{it.qty}</div>
                           <button
                             className="grid h-9 w-9 place-items-center rounded-xl border border-zinc-200 bg-white text-zinc-800 transition hover:bg-zinc-50"
-                            onClick={() => setCart((s) => ({ ...s, [it.key]: (s[it.key] || 0) + 1 }))}
+                            onClick={() => setCart((s) => ({ ...s, [it.id]: (s[it.id] || 0) + 1 }))}
                           >
                             <Plus className="h-4 w-4" />
                           </button>

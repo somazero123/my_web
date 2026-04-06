@@ -1,22 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Box, Check, ImagePlus, Sparkles, UploadCloud, X } from "lucide-react";
+import { BadgeCheck, Box, Check, ImagePlus, UploadCloud, X } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Textarea from "@/components/ui/Textarea";
 import Button from "@/components/ui/Button";
 import { useProductsStore } from "@/stores/productsStore";
-import { textToImageUrl } from "@/utils/textToImage";
 import { cn } from "@/lib/utils";
 import { uploadProductImage } from "@/lib/storage";
-
-function buildProductPrompt(name: string, variant: number) {
-  const base =
-    "children's illustration, zootopia inspired anthropomorphic animal city, cute bunny police officer heroine, bright pastel, clean line art, soft shading";
-  if (variant === 0) return `${base}, product showcase, ${name}, studio light`;
-  if (variant === 1) return `${base}, ${name}, city street background, playful`;
-  return `${base}, ${name}, cute gift presentation, badge and stars`;
-}
 
 export default function AdminProducts() {
   const {
@@ -51,15 +42,12 @@ export default function AdminProducts() {
     setStockMsg(undefined);
   }, [selected]);
 
-  const [candidates, setCandidates] = useState<string[]>([]);
-  const [picked, setPicked] = useState<Record<string, boolean>>({});
-
   return (
     <PageShell>
       <div className="grid gap-6">
         <div>
           <div className="text-lg font-semibold text-zinc-900">商品管理</div>
-          <div className="mt-1 text-sm text-zinc-600">新增商品、上传图片，或按名称生成 3 张候选图。</div>
+          <div className="mt-1 text-sm text-zinc-600">新增商品并上传图片，上传后可设置主图。</div>
         </div>
 
         <Card>
@@ -120,8 +108,6 @@ export default function AdminProducts() {
                     setDesc("");
                     setPointsCost(10);
                     setNewProductStock(5);
-                    setCandidates([]);
-                    setPicked({});
                     setMsg("创建成功");
                   } catch {
                     setMsg("创建失败");
@@ -141,7 +127,7 @@ export default function AdminProducts() {
               <ImagePlus className="h-4 w-4 text-[color:var(--z-accent)]" />
               图片管理
             </CardTitle>
-            <CardDescription>选择目标商品后，可上传本地图片或生成候选图。</CardDescription>
+            <CardDescription>选择目标商品后，可上传本地图片；点击图片可设为主图。</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
@@ -173,96 +159,32 @@ export default function AdminProducts() {
 
               {selected ? (
                 <>
-                  <div className="grid gap-3 lg:grid-cols-2">
-                    <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                        <UploadCloud className="h-4 w-4" />
-                        本地上传
-                      </div>
-                      <div className="mt-2 text-xs text-zinc-600">支持 jpg/png/webp，上传后可设置为主图。</div>
-                      <div className="mt-3">
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={async (e) => {
-                            const files = Array.from(e.target.files || []);
-                            if (!files.length) return;
-                            const urls = await Promise.all(
-                              files.map((file) => uploadProductImage({ productId: selected.id, file, filename: file.name })),
-                            );
-                            await addImages(
-                              selected.id,
-                              urls.map((url) => ({ url, source: "upload" as const })),
-                            );
-                            e.target.value = "";
-                          }}
-                        />
-                      </div>
+                  <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
+                      <UploadCloud className="h-4 w-4" />
+                      本地上传
                     </div>
-
-                    <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 p-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                        <Sparkles className="h-4 w-4" />
-                        自动生成候选图（3 张）
-                      </div>
-                      <div className="mt-2 text-xs text-zinc-600">按商品名称生成 3 张可选插画。</div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            const urls = [0, 1, 2].map((i) =>
-                              textToImageUrl(buildProductPrompt(selected.name, i), "portrait_4_3"),
-                            );
-                            setCandidates(urls);
-                            setPicked({});
-                          }}
-                        >
-                          生成候选图
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            const selectedUrls = candidates.filter((u) => picked[u]);
-                            if (!selectedUrls.length) return;
-                            addImages(
-                              selected.id,
-                              selectedUrls.map((url) => ({ url, source: "recommend" as const })),
-                            );
-                            setCandidates([]);
-                            setPicked({});
-                          }}
-                          disabled={!candidates.length}
-                        >
-                          保存所选
-                        </Button>
-                      </div>
+                    <div className="mt-2 text-xs text-zinc-600">支持 jpg/png/webp，上传后可设置为主图。</div>
+                    <div className="mt-3">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files || []);
+                          if (!files.length) return;
+                          const urls = await Promise.all(
+                            files.map((file) => uploadProductImage({ productId: selected.id, file, filename: file.name })),
+                          );
+                          await addImages(
+                            selected.id,
+                            urls.map((url) => ({ url, source: "upload" as const })),
+                          );
+                          e.target.value = "";
+                        }}
+                      />
                     </div>
                   </div>
-
-                  {candidates.length ? (
-                    <div>
-                      <div className="mb-2 text-sm font-semibold text-zinc-900">候选图（选择后保存）</div>
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        {candidates.map((url) => (
-                          <button
-                            key={url}
-                            className={cn(
-                              "relative overflow-hidden rounded-2xl border bg-white transition hover:-translate-y-0.5",
-                              picked[url] ? "border-blue-400" : "border-white/60",
-                            )}
-                            onClick={() => setPicked((s) => ({ ...s, [url]: !s[url] }))}
-                          >
-                            <div className="aspect-[4/3] bg-zinc-100">
-                              <img src={url} alt="候选图" className="h-full w-full object-cover" />
-                            </div>
-                            <div className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-zinc-900">
-                              {picked[url] ? "已选" : "可选"}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
 
                   <div>
                     <div className="mb-2 text-sm font-semibold text-zinc-900">已有图片（点击设为主图）</div>
@@ -309,7 +231,7 @@ export default function AdminProducts() {
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 px-4 py-6 text-sm text-zinc-600">
-                        还没有图片，先上传或生成候选图。
+                        还没有图片，先上传。
                       </div>
                     )}
                   </div>

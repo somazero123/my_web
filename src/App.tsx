@@ -8,7 +8,7 @@ import AdminProducts from "@/pages/AdminProducts";
 import AdminPoints from "@/pages/AdminPoints";
 import AdminSecret from "@/pages/AdminSecret";
 import AdminIncome from "@/pages/AdminIncome";
-import AdminMigrate from "@/pages/AdminMigrate";
+import AdminTasks from "@/pages/AdminTasks";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 import { useAuth } from "@/providers/authContext";
@@ -101,10 +101,10 @@ export default function App() {
           }
         />
         <Route
-          path="/admin/migrate"
+          path="/admin/tasks"
           element={
             <RequireAuth>
-              <AdminMigrate />
+              <AdminTasks />
             </RequireAuth>
           }
         />
