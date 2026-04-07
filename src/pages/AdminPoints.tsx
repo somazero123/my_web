@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -7,12 +7,16 @@ import Button from "@/components/ui/Button";
 import { usePointsStore } from "@/stores/pointsStore";
 
 export default function AdminPoints() {
-  const { adjustPointsWithSecret } = usePointsStore();
+  const { balance, setPointsWithSecret } = usePointsStore();
 
-  const [delta, setDelta] = useState<number>(1);
+  const [target, setTarget] = useState<number>(balance);
   const [reason, setReason] = useState<string>("");
   const [secret, setSecret] = useState<string>("");
   const [msg, setMsg] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    setTarget(balance);
+  }, [balance]);
 
   return (
     <PageShell>
@@ -28,17 +32,21 @@ export default function AdminPoints() {
               <Pencil className="h-4 w-4 text-[color:var(--z-accent)]" />
               调整积分
             </CardTitle>
-            <CardDescription>支持加分或扣分（扣分请输入负数）。</CardDescription>
+            <CardDescription>直接设置用户的目标积分。</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 text-sm text-zinc-700">
+              当前积分: <span className="font-bold">{balance}</span>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <div className="mb-1 text-xs font-medium text-zinc-700">变更值</div>
+                <div className="mb-1 text-xs font-medium text-zinc-700">修改为</div>
                 <Input
                   type="number"
+                  min={0}
                   step={1}
-                  value={delta}
-                  onChange={(e) => setDelta(Number(e.target.value || 0))}
+                  value={target}
+                  onChange={(e) => setTarget(Number(e.target.value || 0))}
                 />
               </div>
               <div>
@@ -56,22 +64,21 @@ export default function AdminPoints() {
             </div>
 
             <div className="mt-4 flex items-center justify-between gap-3">
-              <div className="text-xs text-zinc-600">提示：正数=加分，负数=扣分。</div>
+              <div className="text-xs text-zinc-600">提示：输入最终想要达到的积分值。</div>
               <Button
                 onClick={async () => {
                   setMsg(undefined);
-                  const r = await adjustPointsWithSecret({
-                    delta,
-                    reason: reason.trim() ? `后台修改：${reason.trim()}` : "后台修改：积分调整",
+                  const r = await setPointsWithSecret({
+                    target,
+                    reason: reason.trim() ? `后台修改：${reason.trim()}` : "后台修改：积分设置",
                     secret,
                   });
                   if (!r.ok) {
-                    setMsg("密钥错误或变更失败");
+                    setMsg("密钥错误或修改失败");
                     return;
                   }
                   setSecret("");
                   setReason("");
-                  setDelta(1);
                   setMsg("修改成功");
                 }}
               >
