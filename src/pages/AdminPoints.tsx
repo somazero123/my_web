@@ -7,7 +7,7 @@ import Button from "@/components/ui/Button";
 import { usePointsStore } from "@/stores/pointsStore";
 
 export default function AdminPoints() {
-  const { balance, setPointsWithSecret } = usePointsStore();
+  const { balance, hydrate, setPointsWithSecret } = usePointsStore();
 
   const [target, setTarget] = useState<number>(balance);
   const [reason, setReason] = useState<string>("");
@@ -17,6 +17,10 @@ export default function AdminPoints() {
   useEffect(() => {
     setTarget(balance);
   }, [balance]);
+
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
 
   return (
     <PageShell>

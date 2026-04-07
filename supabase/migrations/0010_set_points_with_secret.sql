@@ -22,7 +22,7 @@ BEGIN
   END IF;
 
   -- 验证密钥
-  SELECT (public.pg_crypt(p_secret, s.parent_secret_hash) = s.parent_secret_hash)
+  SELECT (crypt(p_secret, s.parent_secret_hash) = s.parent_secret_hash)
     INTO ok
   FROM public.app_settings s
   WHERE s.user_id = uid;
