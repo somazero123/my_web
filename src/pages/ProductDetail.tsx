@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, BadgeCheck, ImageIcon, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ImageIcon, ShoppingBag } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -9,6 +9,7 @@ import PointsPill from "@/components/common/PointsPill";
 import { usePointsStore } from "@/stores/pointsStore";
 import { useProductsStore } from "@/stores/productsStore";
 import { cn } from "@/lib/utils";
+import NoticeModal from "@/components/common/NoticeModal";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -18,7 +19,10 @@ export default function ProductDetail() {
 
   const [activeUrl, setActiveUrl] = useState<string | undefined>(undefined);
   const [open, setOpen] = useState(false);
-  const [result, setResult] = useState<string | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [notice, setNotice] = useState<{ title: string; description: string } | null>(null);
+  const closeNotice = useCallback(() => setNotice(null), []);
 
   const images = useMemo((): Array<{ id: string; url: string }> => {
     if (!product) return [];
@@ -112,7 +116,6 @@ export default function ProductDetail() {
                 className="w-full"
                 disabled={!canRedeem}
                 onClick={() => {
-                  setResult(undefined);
                   setOpen(true);
                 }}
               >
@@ -133,44 +136,61 @@ export default function ProductDetail() {
         open={open}
         title="确认换购"
         description={`将扣减 ${product.pointsCost} 积分，是否继续？`}
-        onClose={() => setOpen(false)}
+        onClose={() => {
+          setOpen(false);
+          setSubmitting(false);
+          submittingRef.current = false;
+        }}
       >
-        {result ? (
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            <div className="flex items-center gap-2 font-medium">
-              <BadgeCheck className="h-4 w-4" />
-              {result}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={() => setOpen(false)}>知道了</Button>
-            </div>
+        <div className="flex flex-col gap-3">
+          <div className="text-sm text-zinc-700">确认后将扣分并减少库存。</div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              variant="secondary"
+              disabled={submitting}
+              onClick={() => {
+                setOpen(false);
+                setSubmitting(false);
+                submittingRef.current = false;
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              disabled={submitting}
+              onClick={async () => {
+                if (submittingRef.current) return;
+                submittingRef.current = true;
+                setSubmitting(true);
+                try {
+                  const r = await redeemProduct(product.id);
+                  if (!r.ok) {
+                    setNotice({ title: "换购失败", description: r.error || "换购失败" });
+                    return;
+                  }
+                  const next = r.newBalance ?? balance - product.pointsCost;
+                  setOpen(false);
+                  setNotice({
+                    title: "换购成功",
+                    description: `已扣减 ${product.pointsCost} 积分，目前共 ${next} 积分。`,
+                  });
+                } finally {
+                  submittingRef.current = false;
+                  setSubmitting(false);
+                }
+              }}
+            >
+              {submitting ? "请稍后" : "确认换购"}
+            </Button>
           </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <div className="text-sm text-zinc-700">确认后将扣分并减少库存。</div>
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="secondary" onClick={() => setOpen(false)}>
-                取消
-              </Button>
-              <Button
-                onClick={() => {
-                  redeemProduct(product.id)
-                    .then((r) => {
-                      if (!r.ok) {
-                        setResult(r.error || "换购失败");
-                        return;
-                      }
-                      setResult("换购成功，兔子警官为你盖章！");
-                    })
-                    .catch(() => setResult("换购失败"));
-                }}
-              >
-                确认换购
-              </Button>
-            </div>
-          </div>
-        )}
+        </div>
       </Modal>
+      <NoticeModal
+        open={!!notice}
+        title={notice?.title ?? ""}
+        description={notice?.description ?? ""}
+        onClose={closeNotice}
+      />
     </PageShell>
   );
 }

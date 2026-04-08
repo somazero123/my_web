@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Minus, Plus, ShoppingCart, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
@@ -9,6 +9,7 @@ import ZootopiaBadge from "@/components/icons/ZootopiaBadge";
 import { cn } from "@/lib/utils";
 import Modal from "@/components/ui/Modal";
 import { useTasksStore } from "@/stores/tasksStore";
+import NoticeModal from "@/components/common/NoticeModal";
 
 function TaskCardItem({
   title,
@@ -56,13 +57,17 @@ function TaskCardItem({
 }
 
 export default function Points() {
-  const { hydrate, adjustPointsWithSecret, lastMessage, clearLastMessage } = usePointsStore();
+  const { hydrate, adjustPointsWithSecret } = usePointsStore();
   const { tasks, hydrate: hydrateTasks, error: tasksError } = useTasksStore();
 
   const [cart, setCart] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
   const [secret, setSecret] = useState("");
   const [secretError, setSecretError] = useState<string | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [notice, setNotice] = useState<{ title: string; description: string } | null>(null);
+  const closeNotice = useCallback(() => setNotice(null), []);
 
   const cards = useMemo(() => tasks, [tasks]);
 
@@ -94,40 +99,12 @@ export default function Points() {
       <div className="grid gap-6">
         <div>
           <div className="text-lg font-semibold text-zinc-900">赚积分</div>
-          <div className="mt-1 text-sm text-zinc-600">把完成的任务先放进购物车，最后结算时输入密钥。</div>
+          <div className="mt-1 text-sm text-zinc-600">把完成的任务先放进累加积分，最后结算时输入密钥。</div>
         </div>
-
-        {lastMessage ? (
-          <div
-            className={cn(
-              "rounded-2xl border px-4 py-3 text-sm",
-              lastMessage.kind === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                : "border-red-200 bg-red-50 text-red-700",
-            )}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                {lastMessage.kind === "success" ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                <span>{lastMessage.text}</span>
-              </div>
-              <button
-                className="text-xs font-medium text-zinc-700 underline underline-offset-2"
-                onClick={clearLastMessage}
-              >
-                关闭
-              </button>
-            </div>
-          </div>
-        ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
           <div>
-            <div className="mb-3 text-sm font-semibold text-zinc-900">任务卡片（点击加入购物车）</div>
+            <div className="mb-3 text-sm font-semibold text-zinc-900">任务卡片（点击加入累加积分）</div>
             {cards.length ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {cards.map((c) => (
@@ -151,7 +128,7 @@ export default function Points() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4 text-[color:var(--z-accent)]" />
-                购物车
+                累加积分
               </CardTitle>
               <CardDescription>把完成的任务先放这里，最后一起结算。</CardDescription>
             </CardHeader>
@@ -211,7 +188,7 @@ export default function Points() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-zinc-300 bg-white/50 px-4 py-6 text-sm text-zinc-600">
-                  还没有任务，先点左边的卡片加入购物车。
+                  还没有任务，先点左边的卡片加入累加积分。
                 </div>
               )}
             </CardContent>
@@ -222,11 +199,13 @@ export default function Points() {
       <Modal
         open={open}
         title="结算加分"
-        description={total > 0 ? `将一次性加分 +${total}（${summary}）` : "购物车为空"}
+        description={total > 0 ? `将一次性加分 +${total}（${summary}）` : "累加积分为空"}
         onClose={() => {
           setOpen(false);
           setSecretError(undefined);
           setSecret("");
+          setSubmitting(false);
+          submittingRef.current = false;
         }}
       >
         <div className="grid gap-3">
@@ -247,33 +226,52 @@ export default function Points() {
                 setOpen(false);
                 setSecretError(undefined);
                 setSecret("");
+                setSubmitting(false);
+                submittingRef.current = false;
               }}
             >
               取消
             </Button>
             <Button
-              disabled={total <= 0}
+              disabled={total <= 0 || submitting}
               onClick={async () => {
+                if (submittingRef.current) return;
+                submittingRef.current = true;
+                setSubmitting(true);
                 setSecretError(undefined);
-                const r = await adjustPointsWithSecret({
-                  delta: total,
-                  reason: summary ? `赚积分结算：${summary}` : "赚积分结算",
-                  secret,
-                });
-                if (!r.ok) {
-                  setSecretError("密钥错误");
-                  return;
+                try {
+                  const r = await adjustPointsWithSecret({
+                    delta: total,
+                    reason: summary ? `赚积分结算：${summary}` : "赚积分结算",
+                    secret,
+                  });
+                  if (!r.ok) {
+                    setSecretError("密钥错误");
+                    setNotice({ title: "结算失败", description: "密钥错误或结算失败" });
+                    return;
+                  }
+                  const next = r.newBalance ?? 0;
+                  setCart({});
+                  setOpen(false);
+                  setSecret("");
+                  setNotice({ title: "结算成功", description: `已增加 ${total} 积分，目前共 ${next} 积分。` });
+                } finally {
+                  submittingRef.current = false;
+                  setSubmitting(false);
                 }
-                setCart({});
-                setOpen(false);
-                setSecret("");
               }}
             >
-              确认结算
+              {submitting ? "请稍后" : "确认结算"}
             </Button>
           </div>
         </div>
       </Modal>
+      <NoticeModal
+        open={!!notice}
+        title={notice?.title ?? ""}
+        description={notice?.description ?? ""}
+        onClose={closeNotice}
+      />
     </PageShell>
   );
 }

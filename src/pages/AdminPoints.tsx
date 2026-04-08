@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Pencil } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { usePointsStore } from "@/stores/pointsStore";
+import NoticeModal from "@/components/common/NoticeModal";
 
 export default function AdminPoints() {
   const { balance, hydrate, setPointsWithSecret } = usePointsStore();
@@ -12,7 +13,10 @@ export default function AdminPoints() {
   const [target, setTarget] = useState<number>(balance);
   const [reason, setReason] = useState<string>("");
   const [secret, setSecret] = useState<string>("");
-  const [msg, setMsg] = useState<string | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
+  const [notice, setNotice] = useState<{ title: string; description: string } | null>(null);
+  const closeNotice = useCallback(() => setNotice(null), []);
 
   useEffect(() => {
     setTarget(balance);
@@ -70,29 +74,43 @@ export default function AdminPoints() {
             <div className="mt-4 flex items-center justify-between gap-3">
               <div className="text-xs text-zinc-600">提示：输入最终想要达到的积分值。</div>
               <Button
+                disabled={submitting}
                 onClick={async () => {
-                  setMsg(undefined);
-                  const r = await setPointsWithSecret({
-                    target,
-                    reason: reason.trim() ? `后台修改：${reason.trim()}` : "后台修改：积分设置",
-                    secret,
-                  });
-                  if (!r.ok) {
-                    setMsg("密钥错误或修改失败");
-                    return;
+                  if (submittingRef.current) return;
+                  submittingRef.current = true;
+                  setSubmitting(true);
+                  try {
+                    const r = await setPointsWithSecret({
+                      target,
+                      reason: reason.trim() ? `后台修改：${reason.trim()}` : "后台修改：积分设置",
+                      secret,
+                    });
+                    if (!r.ok) {
+                      setNotice({ title: "修改失败", description: "密钥错误或修改失败" });
+                      return;
+                    }
+                    const next = r.newBalance ?? target;
+                    setSecret("");
+                    setReason("");
+                    setNotice({ title: "修改成功", description: `已修改为 ${target} 积分，目前共 ${next} 积分。` });
+                  } finally {
+                    submittingRef.current = false;
+                    setSubmitting(false);
                   }
-                  setSecret("");
-                  setReason("");
-                  setMsg("修改成功");
                 }}
               >
-                确认修改
+                {submitting ? "请稍后" : "确认修改"}
               </Button>
             </div>
-            {msg ? <div className="mt-3 text-sm text-zinc-700">{msg}</div> : null}
           </CardContent>
         </Card>
       </div>
+      <NoticeModal
+        open={!!notice}
+        title={notice?.title ?? ""}
+        description={notice?.description ?? ""}
+        onClose={closeNotice}
+      />
     </PageShell>
   );
 }
