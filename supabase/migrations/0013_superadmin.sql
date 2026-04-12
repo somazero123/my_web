@@ -20,6 +20,11 @@ REVOKE ALL ON FUNCTION public.is_superadmin() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.is_superadmin() TO authenticated;
 
 -- 为超级管理员开放所有表的 RLS 权限 (ALL)
+DROP POLICY IF EXISTS "profiles_superadmin_all" ON public.profiles;
+DROP POLICY IF EXISTS "points_ledger_superadmin_all" ON public.points_ledger;
+DROP POLICY IF EXISTS "app_settings_superadmin_all" ON public.app_settings;
+DROP POLICY IF EXISTS "tasks_superadmin_all" ON public.tasks;
+DROP POLICY IF EXISTS "redemptions_superadmin_all" ON public.redemptions;
 CREATE POLICY "profiles_superadmin_all" ON public.profiles FOR ALL USING (public.is_superadmin()) WITH CHECK (public.is_superadmin());
 CREATE POLICY "points_ledger_superadmin_all" ON public.points_ledger FOR ALL USING (public.is_superadmin()) WITH CHECK (public.is_superadmin());
 CREATE POLICY "app_settings_superadmin_all" ON public.app_settings FOR ALL USING (public.is_superadmin()) WITH CHECK (public.is_superadmin());
