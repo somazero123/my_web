@@ -96,6 +96,11 @@ export default function AdminUsers() {
               <div className="py-10 text-center text-sm text-zinc-500">加载中...</div>
             ) : error ? (
               <div className="py-10 text-center text-sm text-red-500">{error}</div>
+            ) : users.length === 0 ? (
+              <div className="py-10 text-center text-sm text-zinc-600">
+                暂无数据或无权限。请确认已在 Supabase 执行 0013_superadmin.sql 与 0014_username_login_and_handle_new_user.sql，
+                并且当前账号已被设置为 superadmin。
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">

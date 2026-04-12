@@ -43,7 +43,7 @@ export default function Login() {
             <div className="grid gap-3">
               <div>
                 <div className="mb-1 text-xs font-medium text-zinc-700">账号</div>
-                <Input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="例如：admin / 妈妈 / 爸爸" />
+                <Input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="请输入账号" />
               </div>
               <div>
                 <div className="mb-1 text-xs font-medium text-zinc-700">密码</div>
