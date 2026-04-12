@@ -3,6 +3,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS username_key text;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username_key_unique ON public.profiles (username_key);
 
+DROP FUNCTION IF EXISTS public.superadmin_get_users();
 CREATE OR REPLACE FUNCTION public.superadmin_get_users()
 RETURNS TABLE(id uuid, username text, email text, display_name text, points_balance integer, created_at timestamptz)
 LANGUAGE sql
@@ -63,4 +64,3 @@ $$;
 UPDATE public.profiles p
 SET role = 'superadmin'
 WHERE p.username_key = 'admin';
-
