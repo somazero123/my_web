@@ -32,12 +32,19 @@ CREATE POLICY "tasks_superadmin_all" ON public.tasks FOR ALL USING (public.is_su
 CREATE POLICY "redemptions_superadmin_all" ON public.redemptions FOR ALL USING (public.is_superadmin()) WITH CHECK (public.is_superadmin());
 
 -- 超级管理员获取所有用户的 RPC
+DROP FUNCTION IF EXISTS public.superadmin_get_users();
 CREATE OR REPLACE FUNCTION public.superadmin_get_users()
-RETURNS TABLE(id uuid, email text, display_name text, points_balance integer, created_at timestamptz)
+RETURNS TABLE(id uuid, username text, email text, display_name text, points_balance integer, created_at timestamptz)
 LANGUAGE sql
 SECURITY DEFINER
 AS $$
-  SELECT p.id, u.email::text, p.display_name, p.points_balance, p.created_at
+  SELECT
+    p.id,
+    (to_jsonb(p)->>'username')::text AS username,
+    u.email::text,
+    p.display_name,
+    p.points_balance,
+    p.created_at
   FROM public.profiles p
   LEFT JOIN auth.users u ON p.id = u.id
   WHERE public.is_superadmin();
