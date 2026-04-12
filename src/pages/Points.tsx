@@ -16,12 +16,23 @@ function TaskCardItem({
   delta,
   img,
   onPick,
+  flashToken,
 }: {
   title: string;
   delta: number;
   img?: string;
   onPick: () => void;
+  flashToken: number;
 }) {
+  const [flashOpen, setFlashOpen] = useState(false);
+
+  useEffect(() => {
+    if (!flashToken) return;
+    setFlashOpen(true);
+    const t = setTimeout(() => setFlashOpen(false), 650);
+    return () => clearTimeout(t);
+  }, [flashToken]);
+
   return (
     <button
       className={cn(
@@ -30,6 +41,13 @@ function TaskCardItem({
       onClick={onPick}
     >
       <div className="relative aspect-[4/3] bg-zinc-100">
+        {flashOpen ? (
+          <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center">
+            <div key={flashToken} className="points-flash rounded-2xl bg-black/60 px-3 py-2 text-sm font-semibold text-white">
+              {title}+{delta}
+            </div>
+          </div>
+        ) : null}
         {img ? (
           <img src={img} alt={title} className="h-full w-full object-cover" />
         ) : (
@@ -61,6 +79,7 @@ export default function Points() {
   const { tasks, hydrate: hydrateTasks, error: tasksError } = useTasksStore();
 
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [flashTokens, setFlashTokens] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
   const [secret, setSecret] = useState("");
   const [secretError, setSecretError] = useState<string | undefined>(undefined);
@@ -113,7 +132,11 @@ export default function Points() {
                     title={c.title}
                     delta={c.delta}
                     img={c.imageUrl}
-                    onPick={() => setCart((s) => ({ ...s, [c.id]: (s[c.id] || 0) + 1 }))}
+                    flashToken={flashTokens[c.id] || 0}
+                    onPick={() => {
+                      setCart((s) => ({ ...s, [c.id]: (s[c.id] || 0) + 1 }));
+                      setFlashTokens((s) => ({ ...s, [c.id]: (s[c.id] || 0) + 1 }));
+                    }}
                   />
                 ))}
               </div>
@@ -140,7 +163,7 @@ export default function Points() {
                       <div key={it.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/60 bg-white/60 px-3 py-2">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-zinc-900">{it.title}</div>
-                          <div className="mt-0.5 text-xs text-zinc-600">每次 +{it.delta}，共 {it.qty * it.delta}</div>
+                          <div className="mt-0.5 text-xs text-zinc-600">+{it.qty * it.delta}积分</div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
