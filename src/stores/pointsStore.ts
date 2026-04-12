@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { PointsLedgerItem } from "@/types/app";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuthStore } from "./authStore";
 
 type PointsState = {
   balance: number;
@@ -30,15 +31,23 @@ export const usePointsStore = create<PointsState>()((set) => ({
   hydrate: async () => {
     set({ loading: true });
     try {
+      const uid = await useAuthStore.getState().getEffectiveUserId();
+      if (!uid) {
+        set({ loading: false });
+        return;
+      }
+
       const profileRes = await supabase
         .from("profiles")
         .select("points_balance")
+        .eq("id", uid)
         .single();
       const balance = profileRes.data?.points_balance ?? 0;
 
       const ledgerRes = await supabase
         .from("points_ledger")
         .select("id, delta, reason, created_at")
+        .eq("user_id", uid)
         .order("created_at", { ascending: false })
         .limit(200);
 
@@ -60,10 +69,12 @@ export const usePointsStore = create<PointsState>()((set) => ({
       return { ok: false, error: "积分变更值无效" };
     }
     const trimmedReason = reason.trim() ? reason.trim() : "积分变更";
+    const uid = await useAuthStore.getState().getEffectiveUserId();
     const { data, error } = await supabase.rpc("add_points_with_secret", {
       p_delta: Math.trunc(delta),
       p_reason: trimmedReason,
       p_secret: secret,
+      p_user_id: uid,
     });
     if (error) {
       set({ lastMessage: { kind: "error", text: "密钥错误或加分失败" } });
@@ -80,10 +91,12 @@ export const usePointsStore = create<PointsState>()((set) => ({
       return { ok: false, error: "目标积分值无效" };
     }
     const trimmedReason = reason.trim() ? reason.trim() : "积分重置";
+    const uid = await useAuthStore.getState().getEffectiveUserId();
     const { data, error } = await supabase.rpc("set_points_with_secret", {
       p_target: Math.trunc(target),
       p_reason: trimmedReason,
       p_secret: secret,
+      p_user_id: uid,
     });
     if (error) {
       set({ lastMessage: { kind: "error", text: "密钥错误或修改失败" } });
@@ -95,7 +108,11 @@ export const usePointsStore = create<PointsState>()((set) => ({
     return { ok: true, newBalance };
   },
   redeemProduct: async (productId) => {
-    const { data, error } = await supabase.rpc("redeem_product", { p_product_id: productId });
+    const uid = await useAuthStore.getState().getEffectiveUserId();
+    const { data, error } = await supabase.rpc("redeem_product", {
+      p_product_id: productId,
+      p_user_id: uid,
+    });
     if (error) {
       set({ lastMessage: { kind: "error", text: "换购失败" } });
       return { ok: false, error: error.message };

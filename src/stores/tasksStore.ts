@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabaseClient";
 import { TASK_CARDS } from "@/config/taskCards";
+import { useAuthStore } from "./authStore";
 
 export type EarnTask = {
   id: string;
@@ -40,10 +41,17 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   hydrate: async () => {
     set({ loading: true, error: undefined });
     try {
+      const uid = await useAuthStore.getState().getEffectiveUserId();
+      if (!uid) {
+        set({ loading: false });
+        return;
+      }
+
       const fetchTasks = async () =>
         await supabase
           .from("tasks")
           .select("id, title, delta, image_url, sort_order, created_at")
+          .eq("user_id", uid)
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: true });
 
@@ -85,8 +93,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     if (!trimmed) return { ok: false, error: "请输入任务名称" };
     if (!Number.isFinite(delta) || delta <= 0) return { ok: false, error: "加分值无效" };
 
-    const authRes = await supabase.auth.getUser();
-    const userId = authRes.data.user?.id;
+    const userId = await useAuthStore.getState().getEffectiveUserId();
     if (!userId) return { ok: false, error: "未登录" };
 
     const nextOrder = (get().tasks.at(-1)?.sortOrder ?? -1) + 1;

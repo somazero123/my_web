@@ -9,6 +9,7 @@ import AdminPoints from "@/pages/AdminPoints";
 import AdminSecret from "@/pages/AdminSecret";
 import AdminIncome from "@/pages/AdminIncome";
 import AdminTasks from "@/pages/AdminTasks";
+import AdminUsers from "@/pages/AdminUsers";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/NotFound";
 import { useAuth } from "@/providers/authContext";
@@ -105,6 +106,14 @@ export default function App() {
           element={
             <RequireAuth>
               <AdminTasks />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <RequireAuth>
+              <AdminUsers />
             </RequireAuth>
           }
         />

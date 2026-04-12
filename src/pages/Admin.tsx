@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { BadgeCheck, CalendarDays, KeyRound, ListChecks, Pencil } from "lucide-react";
+import { BadgeCheck, CalendarDays, KeyRound, ListChecks, Pencil, Users } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { cn } from "@/lib/utils";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/providers/authContext";
 
 function ModuleCard({
   to,
@@ -37,6 +38,9 @@ function ModuleCard({
 }
 
 export default function Admin() {
+  const { session } = useAuth();
+  const isSuperAdmin = session?.user?.email === "admin@admin.com";
+
   return (
     <PageShell>
       <div className="grid gap-6">
@@ -56,6 +60,14 @@ export default function Admin() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
+          {isSuperAdmin && (
+            <ModuleCard
+              to="/admin/users"
+              title="超级管理员"
+              desc="查看所有账号，直接修改积分，免密切换用户视角。"
+              icon={<Users className="h-5 w-5" />}
+            />
+          )}
           <ModuleCard
             to="/admin/products"
             title="商品管理"

@@ -1,11 +1,13 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Home } from "lucide-react";
+import { Home, UserCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ZootopiaBadge from "@/components/icons/ZootopiaBadge";
+import { useAuthStore } from "@/stores/authStore";
 
 export default function NavBar() {
   const nav = useNavigate();
   const loc = useLocation();
+  const { impersonatedUserId, setImpersonatedUserId } = useAuthStore();
   return (
     <div className="sticky top-0 z-40 border-b border-white/50 bg-[color:var(--z-bg)]/60 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
@@ -36,6 +38,16 @@ export default function NavBar() {
         </div>
 
         <div className="flex items-center gap-2">
+          {impersonatedUserId && (
+            <button
+              className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 transition hover:bg-amber-200"
+              onClick={() => setImpersonatedUserId(undefined)}
+              title="点击退出切换视角"
+            >
+              <UserCircle className="h-4 w-4" />
+              <span>当前为切换视角</span>
+            </button>
+          )}
           <div className="hidden sm:block" />
         </div>
       </div>
