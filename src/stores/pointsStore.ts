@@ -100,6 +100,11 @@ export const usePointsStore = create<PointsState>()((set) => ({
       set({ lastMessage: { kind: "error", text: "换购失败" } });
       return { ok: false, error: error.message };
     }
+    if (data == null || (Array.isArray(data) && data.length === 0)) {
+      const msg = "换购失败：服务器未返回结果（请在 Supabase 更新 redeem_product 函数）";
+      set({ lastMessage: { kind: "error", text: msg } });
+      return { ok: false, error: msg };
+    }
     const raw = (Array.isArray(data) ? data[0] : data) as unknown;
     const row = raw as { ok?: unknown; new_balance?: unknown; message?: unknown } | null;
     const ok = row?.ok === true || (row?.ok !== false && typeof row?.new_balance === "number");
