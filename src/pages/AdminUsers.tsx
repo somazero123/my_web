@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, Pencil, RefreshCw } from "lucide-react";
+import { Users, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import PageShell from "@/components/layout/PageShell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
@@ -24,6 +24,7 @@ export default function AdminUsers() {
   const [error, setError] = useState<string | undefined>(undefined);
 
   const [editUser, setEditUser] = useState<Profile | undefined>(undefined);
+  const [deleteUser, setDeleteUser] = useState<Profile | undefined>(undefined);
   const [targetPoints, setTargetPoints] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<{ kind: "success" | "error"; text: string } | undefined>(undefined);
@@ -63,6 +64,33 @@ export default function AdminUsers() {
     setNotice({ kind: "success", text: "修改成功" });
     setEditUser(undefined);
     fetchUsers(); // Refresh list
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return;
+    setSubmitting(true);
+    try {
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data.session?.access_token;
+      const resp = await fetch("/api/superadmin/delete-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ userId: deleteUser.id }),
+      });
+      const json = (await resp.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+      if (!resp.ok || !json?.success) {
+        setNotice({ kind: "error", text: json?.error || "删除失败" });
+        return;
+      }
+      setNotice({ kind: "success", text: "删除成功" });
+      setDeleteUser(undefined);
+      fetchUsers();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -107,7 +135,6 @@ export default function AdminUsers() {
                   <thead>
                     <tr className="border-b border-zinc-200">
                       <th className="px-3 py-3 font-semibold text-zinc-900">账号</th>
-                      <th className="px-3 py-3 font-semibold text-zinc-900">昵称</th>
                       <th className="px-3 py-3 font-semibold text-zinc-900">积分</th>
                       <th className="px-3 py-3 font-semibold text-zinc-900 text-right">操作</th>
                     </tr>
@@ -116,7 +143,6 @@ export default function AdminUsers() {
                     {users.map((u) => (
                       <tr key={u.id} className="border-b border-zinc-100 last:border-0">
                         <td className="px-3 py-3 text-zinc-700">{u.username || u.email || "-"}</td>
-                        <td className="px-3 py-3 text-zinc-700">{u.display_name || "-"}</td>
                         <td className="px-3 py-3 font-medium text-[color:var(--z-accent)]">{u.points_balance}</td>
                         <td className="px-3 py-3 text-right">
                           <div className="flex items-center justify-end gap-2">
@@ -141,6 +167,14 @@ export default function AdminUsers() {
                             >
                               <RefreshCw className="h-3 w-3 mr-1" />
                               {impersonatedUserId === u.id ? "当前视角" : "切换视角"}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              className="h-8 px-2 text-xs"
+                              onClick={() => setDeleteUser(u)}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              删除
                             </Button>
                           </div>
                         </td>
@@ -179,6 +213,25 @@ export default function AdminUsers() {
             </Button>
             <Button onClick={handleEditPoints} disabled={submitting}>
               {submitting ? "请稍后..." : "确认修改"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!deleteUser}
+        title="删除账号"
+        description={`确定删除账号：${deleteUser?.username || deleteUser?.email || ""}？`}
+        onClose={() => !submitting && setDeleteUser(undefined)}
+      >
+        <div className="grid gap-3">
+          <div className="text-sm text-zinc-700">删除后该账号将无法登录，积分与任务等数据也会一并清除。</div>
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDeleteUser(undefined)} disabled={submitting}>
+              取消
+            </Button>
+            <Button onClick={handleDeleteUser} disabled={submitting}>
+              {submitting ? "请稍后..." : "确认删除"}
             </Button>
           </div>
         </div>
