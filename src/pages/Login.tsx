@@ -63,8 +63,13 @@ export default function Login() {
                     setMode("login");
                   } catch (e) {
                     const raw = e instanceof Error ? e.message : "操作失败";
-                    if (raw.toLowerCase().includes("database")) {
+                    const lower = raw.toLowerCase();
+                    if (lower.includes("database")) {
                       setMsg("数据库错误：请稍后重试（或联系管理员检查 Supabase 触发器/函数）。");
+                    } else if (lower.includes("invalid login credentials")) {
+                      setMsg("账号不存在或密码错误。首次使用请先点“去注册”创建账号；若已注册但开启了邮箱验证，请先到邮箱完成确认。");
+                    } else if (lower.includes("email not confirmed")) {
+                      setMsg("邮箱未验证：请先到邮箱完成确认后再登录。");
                     } else {
                       setMsg(raw);
                     }
