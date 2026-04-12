@@ -100,14 +100,19 @@ export const usePointsStore = create<PointsState>()((set) => ({
       set({ lastMessage: { kind: "error", text: "换购失败" } });
       return { ok: false, error: error.message };
     }
-    const row = (data as Array<{ ok: boolean; new_balance: number; message: string }> | null)?.[0];
-    if (!row?.ok) {
-      set({ lastMessage: { kind: "error", text: row?.message || "换购失败" } });
-      return { ok: false, error: row?.message || "换购失败" };
+    const raw = (Array.isArray(data) ? data[0] : data) as unknown;
+    const row = raw as { ok?: unknown; new_balance?: unknown; message?: unknown } | null;
+    const ok = row?.ok === true || (row?.ok !== false && typeof row?.new_balance === "number");
+    if (!ok) {
+      const msg = typeof row?.message === "string" && row.message.trim() ? row.message : "换购失败";
+      set({ lastMessage: { kind: "error", text: msg } });
+      return { ok: false, error: msg };
     }
-    set({ lastMessage: { kind: "success", text: row.message || "换购成功" } });
+    const msg = typeof row?.message === "string" && row.message.trim() ? row.message : "换购成功";
+    set({ lastMessage: { kind: "success", text: msg } });
     await usePointsStore.getState().hydrate();
-    return { ok: true, newBalance: row.new_balance };
+    const newBalance = typeof row?.new_balance === "number" ? row.new_balance : undefined;
+    return { ok: true, newBalance };
   },
   clearLastMessage: () => set({ lastMessage: undefined }),
 }));
