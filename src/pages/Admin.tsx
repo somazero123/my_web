@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { BadgeCheck, CalendarDays, KeyRound, ListChecks, Pencil, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 import PageShell from "@/components/layout/PageShell";
 import { cn } from "@/lib/utils";
 import Button from "@/components/ui/Button";
@@ -39,7 +40,15 @@ function ModuleCard({
 
 export default function Admin() {
   const { session } = useAuth();
-  const isSuperAdmin = session?.user?.email === "admin@admin.com";
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    (async () => {
+      const { data } = await supabase.from("profiles").select("role").eq("id", session.user.id).single();
+      setIsSuperAdmin(data?.role === "superadmin");
+    })();
+  }, [session?.user?.id]);
 
   return (
     <PageShell>

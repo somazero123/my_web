@@ -11,7 +11,8 @@ import { useAuthStore } from "@/stores/authStore";
 
 type Profile = {
   id: string;
-  email: string;
+  username?: string;
+  email?: string;
   display_name: string;
   points_balance: number;
   created_at: string;
@@ -100,7 +101,7 @@ export default function AdminUsers() {
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-zinc-200">
-                      <th className="px-3 py-3 font-semibold text-zinc-900">邮箱</th>
+                      <th className="px-3 py-3 font-semibold text-zinc-900">账号</th>
                       <th className="px-3 py-3 font-semibold text-zinc-900">昵称</th>
                       <th className="px-3 py-3 font-semibold text-zinc-900">积分</th>
                       <th className="px-3 py-3 font-semibold text-zinc-900 text-right">操作</th>
@@ -109,7 +110,7 @@ export default function AdminUsers() {
                   <tbody>
                     {users.map((u) => (
                       <tr key={u.id} className="border-b border-zinc-100 last:border-0">
-                        <td className="px-3 py-3 text-zinc-700">{u.email}</td>
+                        <td className="px-3 py-3 text-zinc-700">{u.username || u.email || "-"}</td>
                         <td className="px-3 py-3 text-zinc-700">{u.display_name || "-"}</td>
                         <td className="px-3 py-3 font-medium text-[color:var(--z-accent)]">{u.points_balance}</td>
                         <td className="px-3 py-3 text-right">
@@ -151,7 +152,7 @@ export default function AdminUsers() {
       <Modal
         open={!!editUser}
         title="修改积分"
-        description={`修改账号：${editUser?.email}`}
+        description={`修改账号：${editUser?.username || editUser?.email || ""}`}
         onClose={() => !submitting && setEditUser(undefined)}
       >
         <div className="grid gap-3">

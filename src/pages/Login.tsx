@@ -6,10 +6,27 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabaseClient";
 
+async function sha256Base64Url(input: string) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+async function accountToEmail(account: string) {
+  const trimmed = account.trim();
+  if (!trimmed) return "";
+  if (trimmed.includes("@")) return trimmed.toLowerCase();
+  const key = trimmed.toLowerCase();
+  const hash = await sha256Base64Url(key);
+  return `u_${hash}@accounts.local`;
+}
+
 export default function Login() {
   const nav = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
+  const [account, setAccount] = useState("");
   const [password, setPassword] = useState("");
   const [msg, setMsg] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -25,8 +42,8 @@ export default function Login() {
           <CardContent>
             <div className="grid gap-3">
               <div>
-                <div className="mb-1 text-xs font-medium text-zinc-700">邮箱</div>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+                <div className="mb-1 text-xs font-medium text-zinc-700">账号</div>
+                <Input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="例如：admin / 妈妈 / 爸爸" />
               </div>
               <div>
                 <div className="mb-1 text-xs font-medium text-zinc-700">密码</div>
@@ -44,8 +61,10 @@ export default function Login() {
                   setLoading(true);
                   try {
                     if (mode === "login") {
+                      const email = await accountToEmail(account);
+                      if (!email) throw new Error("请输入账号");
                       const { error } = await supabase.auth.signInWithPassword({
-                        email: email.trim(),
+                        email,
                         password,
                       });
                       if (error) throw error;
@@ -53,23 +72,29 @@ export default function Login() {
                       return;
                     }
 
-                    const { error } = await supabase.auth.signUp({
-                      email: email.trim(),
-                      password,
-                      options: { data: { display_name: "" } },
+                    const trimmedAccount = account.trim();
+                    if (!trimmedAccount) throw new Error("请输入账号");
+                    const regRes = await fetch("/api/auth/register", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ username: trimmedAccount, password }),
                     });
+                    const regJson = (await regRes.json().catch(() => null)) as { success?: boolean; error?: string } | null;
+                    if (!regRes.ok || !regJson?.success) throw new Error(regJson?.error || "注册失败");
+
+                    const email = await accountToEmail(trimmedAccount);
+                    const { error } = await supabase.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    setMsg("注册成功，请登录。");
-                    setMode("login");
+                    nav("/");
                   } catch (e) {
                     const raw = e instanceof Error ? e.message : "操作失败";
                     const lower = raw.toLowerCase();
                     if (lower.includes("database")) {
                       setMsg("数据库错误：请稍后重试（或联系管理员检查 Supabase 触发器/函数）。");
                     } else if (lower.includes("invalid login credentials")) {
-                      setMsg("账号不存在或密码错误。首次使用请先点“去注册”创建账号；若已注册但开启了邮箱验证，请先到邮箱完成确认。");
+                      setMsg("账号不存在或密码错误。首次使用请先点“去注册”创建账号。");
                     } else if (lower.includes("email not confirmed")) {
-                      setMsg("邮箱未验证：请先到邮箱完成确认后再登录。");
+                      setMsg("账号未启用，请联系管理员。");
                     } else {
                       setMsg(raw);
                     }
